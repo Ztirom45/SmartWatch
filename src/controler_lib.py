@@ -3,6 +3,10 @@ import framebuf
 import time
 Vbat_Pin = 29
 
+#setup font
+CHAR_SPACE = 32
+from font import *
+
 #Pin definition  引脚定义
 I2C_SDA = 6
 I2C_SDL = 7
@@ -370,36 +374,50 @@ class LCD_1inch28(framebuf.FrameBuffer):
             Addr = (Xstart * 2) + (i * 240 * 2)                
             self.spi.write(self.buffer[Addr : Addr+((Xend-Xstart)*2)])
         self.cs(1)
-        
-    #Write characters, size is the font size, the minimum is 1  
-    #写字符，size为字体大小,最小为1
-    def write_text(self,text,x,y,size,color):
-        ''' Method to write Text on OLED/LCD Displays
-            with a variable font size
-
-            Args:
-                text: the string of chars to be displayed
-                x: x co-ordinate of starting position
-                y: y co-ordinate of starting position
-                size: font size of text
-                color: color of text to be displayed
-        '''
-        background = self.pixel(x,y)
-        info = []
-        # Creating reference charaters to read their values
-        self.text(text,x,y,color)
-        for i in range(x,x+(8*len(text))):
-            for j in range(y,y+8):
-                # Fetching amd saving details of pixels, such as
-                # x co-ordinate, y co-ordinate, and color of the pixel
-                px_color = self.pixel(i,j)
-                info.append((i,j,px_color)) if px_color == color else None
-        # Clearing the reference characters from the screen
-        self.text(text,x,y,background)
-        # Writing the custom-sized font characters on screen
-        for px_info in info:
-            self.fill_rect(size*px_info[0] - (size-1)*x , size*px_info[1] - (size-1)*y, size, size, px_info[2]) 
     
+    def write_text_vertical(self,text,pos,size,color,background_color,center=False):
+        """
+            this function draws the font from the font.py file vertical
+            function written by Ztirom45
+            LICENCE: GPL4
+            
+            parms:
+            text
+            pos - list y and x  position in pixels
+            size - size of the font (pixel size of a char)
+            color - color of font
+            background color - backgroundcolor of font
+        """
+        
+        if center: pos[0]-=int(len(text)*CHAR_W*size/2)
+        else: pos[0]-=len(text)*size*CHAR_W
+        char_counter = 0
+        for char in list(text)[::-1]:
+            if(ord(char)!=CHAR_SPACE):
+                #get x position of the char in the image 
+                char_pos = (ord(char)-CHAR_SPACE)*CHAR_W
+                if char_pos > IMG_W:char_pos = 0
+                #draw char
+                for x in range(CHAR_W):
+                    for y in range(CHAR_H):
+                        if(font[y][x+char_pos] == "#"):
+                            self.rect(
+                                y*size+pos[1],(CHAR_W-x+char_counter)*size+pos[0],size,size,
+                                color
+                                )
+                                
+                        elif background_color != None:
+                            self.rect(
+                                y*size+pos[1],(CHAR_W-x+char_counter)*size+pos[0],size,size,
+                                background_color
+                                )
+            elif background_color!= None:
+                self.rect(
+                        pos[1],char_counter*size+pos[0],CHAR_W*size,CHAR_H*size,
+                        background_color
+                        )
+            char_counter += CHAR_W
+           
         
 #Touch drive  触摸驱动
 class Touch_CST816T(object):
@@ -416,6 +434,7 @@ class Touch_CST816T(object):
         self.tim = Timer()     
         self.rst=Pin(rst_pin,Pin.OUT)
         self.Reset()
+        self.last_time_pressed = time.time()
         bRet=self.WhoAmI()
         if bRet :
             print("Success:Detected CST816T.")
@@ -487,6 +506,7 @@ class Touch_CST816T(object):
         self.Y_point=y_point
         
     def Int_Callback(self,pin):
+        self.last_time_pressed = time.time()
         if self.Mode == 0 :
             self.Gestures = self._read_byte(0x01)
 
@@ -577,9 +597,11 @@ class QMI8658(object):
         return xyz
 
 
-GUESTER_UP = const(0x01)
-GUESTER_DOWN = const(0x02)
-GUESTER_LEFT = const(0x03)
-GUESTER_RIGHT = const(0x04)
+#geuesters from the watch wearer perspective
+GUESTER_UP = const(0x03)#const(0x01)
+GUESTER_DOWN = const(0x04)#const(0x02)
+GUESTER_LEFT = const(0x02)#const(0x03)
+GUESTER_RIGHT = const(0x01)#const(0x04)
+GUESTER_CLICK = const(0x05)
 GUESTER_LONG_PRESS = const(0x0C)
 GUESTER_DOUBLE_CLICK = const(0x0B)
