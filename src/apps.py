@@ -3,28 +3,27 @@ from controler_lib import *
 
 TIME_LOCK = const(3)
 
-def ask_sleep_break() -> None:
-    if(Touch.Gestures == GUESTER_DOUBLE_CLICK or (time.time()-Touch.last_time_pressed)>3):
-        LCD.fill(LCD.black)
-        LCD.show()
-
-        LCD.set_bl_pwm(0)#disable backlight 
-        LCD.write_cmd(0x10)#enter sleep_mode
-        #machine.deepsleep(1000)
-        
-        freq(20000000) # reduce to 20MHz
-        Touch.Gestures = 0
-        while Touch.Gestures != GUESTER_CLICK:
-            #machine.deepsleep(1000)
-            time.sleep(0.1)
-        freq(125000000) # restore to 125MHz
-        
-        LCD.write_cmd(0x11)#wake up from sleep_mode
-        LCD.set_bl_pwm(30000)#enable backlight
-
-
-
 class App():
+    def ask_sleep_break(self) -> None:
+        if(Touch.Gestures == GUESTER_DOUBLE_CLICK or (time.time()-Touch.last_time_pressed)>TIME_LOCK):
+            LCD.fill(LCD.black)
+            LCD.show()
+
+            LCD.set_bl_pwm(0)#disable backlight 
+            LCD.write_cmd(0x10)#enter sleep_mode
+            #machine.deepsleep(1000)
+            
+            freq(20000000) # reduce to 20MHz
+            Touch.Gestures = 0
+            while Touch.Gestures != GUESTER_CLICK:
+                #machine.deepsleep(1000)
+                time.sleep(0.1)
+            freq(125000000) # restore to 125MHz
+            
+            LCD.write_cmd(0x11)#wake up from sleep_mode
+            LCD.set_bl_pwm(30000)#enable backlight
+
+
     def setup(self) -> None:
         """
             enter your code for starting this app in this metode in the childclass
@@ -39,7 +38,7 @@ class App():
         self.setup()
         while True:
             self.loop()
-            ask_sleep_break()
+            self.ask_sleep_break()
             if(Touch.Gestures == GUESTER_LEFT):
                 return True
             if(Touch.Gestures == GUESTER_RIGHT):
@@ -125,4 +124,66 @@ class Clock(App):
         self.draw_time()
         LCD.show()
 
-Apps = [Clock(),DOF_READ()]
+DISPLAY_SIZE = const(240)
+DISPLAY_SIZE_HALF = const(120)
+class Ploty(App):
+    """
+        a App to plot data (in this case the accelration of the gyro)
+    """
+    def __init__(self) -> None:
+        self.qmi8658=QMI8658()
+        self.data = [
+                [0 for _ in range(DISPLAY_SIZE)],# in this case red & acc_x
+                [0 for _ in range(DISPLAY_SIZE)],# in this case green & acc_y
+                [0 for _ in range(DISPLAY_SIZE)],# in this case blue & acc_z
+                [0 for _ in range(DISPLAY_SIZE)]# in this case white & all accs added
+                ]
+    def update_data(self,data_now) -> None:#update the ploted data
+        self.data[0].append(data_now[0])
+        del(self.data[0][0])
+        self.data[1].append(data_now[1])
+        del(self.data[1][0])
+        self.data[2].append(data_now[2])
+        del(self.data[2][0])
+        self.data[3].append(data_now[3])
+        del(self.data[3][0])
+    def draw_data(self):
+        LCD.fill(LCD.black)
+        for i in range(DISPLAY_SIZE):
+            LCD.pixel(DISPLAY_SIZE_HALF+self.data[0][i],DISPLAY_SIZE-i,LCD.red)
+            LCD.pixel(DISPLAY_SIZE_HALF+self.data[1][i],DISPLAY_SIZE-i,LCD.green)
+            LCD.pixel(DISPLAY_SIZE_HALF+self.data[2][i],DISPLAY_SIZE-i,LCD.blue)
+            LCD.pixel(DISPLAY_SIZE_HALF+self.data[3][i],DISPLAY_SIZE-i,LCD.white)
+
+    def setup(self) -> None:
+        LCD.fill(LCD.black)
+    def loop(self) -> None:
+        acc_and_gyro = self.qmi8658.Read_XYZ()[:3]
+        acc_x = int(acc_and_gyro[0]*50)
+        acc_y = int(acc_and_gyro[1]*50)
+        acc_z = int(acc_and_gyro[2]*50)
+        acc_all = int((acc_x+acc_y+acc_z)/3)
+        self.update_data((acc_x,acc_y,acc_z,acc_all))
+        self.draw_data()
+        LCD.show()
+    def ask_sleep_break(self) -> None:
+        if(Touch.Gestures == GUESTER_DOUBLE_CLICK):
+            LCD.fill(LCD.black)
+            LCD.show()
+
+            LCD.set_bl_pwm(0)#disable backlight 
+            LCD.write_cmd(0x10)#enter sleep_mode
+            #machine.deepsleep(1000)
+            
+            freq(20000000) # reduce to 20MHz
+            Touch.Gestures = 0
+            while Touch.Gestures != GUESTER_CLICK:
+                #machine.deepsleep(1000)
+                time.sleep(0.1)
+            freq(125000000) # restore to 125MHz
+            
+            LCD.write_cmd(0x11)#wake up from sleep_mode
+            LCD.set_bl_pwm(30000)#enable backlight
+
+
+Apps = [Clock(),DOF_READ(),Ploty()]
