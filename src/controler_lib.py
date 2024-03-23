@@ -24,7 +24,7 @@ BL = 25
 
 #LCD Driver  LCD驱动
 class LCD_1inch28(framebuf.FrameBuffer):
-    def __init__(self): #SPI initialization  SPI初始化
+    def __init__(self) -> None: #SPI initialization  SPI初始化
         self.width = 240
         self.height = 240
         
@@ -53,24 +53,24 @@ class LCD_1inch28(framebuf.FrameBuffer):
         self.pwm = PWM(Pin(BL))
         self.pwm.freq(5000) #Turn on the backlight  开背光
         
-    def write_cmd(self, cmd): #Write command  写命令
+    def write_cmd(self, cmd) -> None: #Write command  写命令
         self.cs(1)
         self.dc(0)
         self.cs(0)
         self.spi.write(bytearray([cmd]))
         self.cs(1)
 
-    def write_data(self, buf): #Write data  写数据
+    def write_data(self, buf) -> None: #Write data  写数据
         self.cs(1)
         self.dc(1)
         self.cs(0)
         self.spi.write(bytearray([buf]))
         self.cs(1)
         
-    def set_bl_pwm(self,duty): #Set screen brightness  设置屏幕亮度
+    def set_bl_pwm(self,duty) -> None: #Set screen brightness  设置屏幕亮度
         self.pwm.duty_u16(duty)#max 65535
         
-    def init_display(self): #LCD initialization  LCD初始化
+    def init_display(self) -> None: #LCD initialization  LCD初始化
         """Initialize dispaly"""  
         self.rst(1)
         time.sleep(0.01)
@@ -315,7 +315,7 @@ class LCD_1inch28(framebuf.FrameBuffer):
         self.write_cmd(0x29)
     
     #设置窗口    
-    def setWindows(self,Xstart,Ystart,Xend,Yend): 
+    def setWindows(self,Xstart,Ystart,Xend,Yend) -> None: 
         self.write_cmd(0x2A)
         self.write_data(0x00)
         self.write_data(Xstart)
@@ -331,7 +331,7 @@ class LCD_1inch28(framebuf.FrameBuffer):
         self.write_cmd(0x2C)
      
     #Show  显示   
-    def show(self): 
+    def show(self) -> None: 
         self.setWindows(0,0,self.width,self.height)
         
         self.cs(1)
@@ -347,7 +347,7 @@ class LCD_1inch28(framebuf.FrameBuffer):
     '''
     #Partial display, the starting point of the local display here is reduced by 10, and the end point is increased by 10
     #局部显示，这里的局部显示起点减少10，终点增加10
-    def Windows_show(self,Xstart,Ystart,Xend,Yend):
+    def Windows_show(self,Xstart,Ystart,Xend,Yend) -> None:
         if Xstart > Xend:
             data = Xstart
             Xstart = Xend
@@ -375,7 +375,7 @@ class LCD_1inch28(framebuf.FrameBuffer):
             self.spi.write(self.buffer[Addr : Addr+((Xend-Xstart)*2)])
         self.cs(1)
     
-    def write_text_vertical(self,text,pos,size,color,background_color,center=False):
+    def write_text_vertical(self,text,pos,size,color,background_color,center=False) -> None:
         """
             this function draws the font from the font.py file vertical
             function written by Ztirom45
@@ -427,7 +427,7 @@ class Touch_CST816T(object):
     modefied by Ztirom45
     """
     #Initialize the touch chip  初始化触摸芯片
-    def __init__(self,address=0x15,mode=0,i2c_num=1,i2c_sda=6,i2c_scl=7,int_pin=21,rst_pin=22,LCD=None):
+    def __init__(self,address=0x15,mode=0,i2c_num=1,i2c_sda=6,i2c_scl=7,int_pin=21,rst_pin=22,LCD=None) -> None:
         self._bus = I2C(id=i2c_num,scl=Pin(i2c_scl),sda=Pin(i2c_sda),freq=400_000) #Initialize I2C 初始化I2C
         self._address = address #Set slave address  设置从机地址
         self.int=Pin(int_pin,Pin.IN, Pin.PULL_UP)     
@@ -458,10 +458,10 @@ class Touch_CST816T(object):
         rec=self._bus.readfrom_mem(int(self._address),int(reg),length)
         return rec
     
-    def _write_byte(self,cmd,val):
+    def _write_byte(self,cmd,val) -> None:
         self._bus.writeto_mem(int(self._address),int(cmd),bytes([int(val)]))
 
-    def WhoAmI(self):
+    def WhoAmI(self) -> bool:
         if (0xB5) != self._read_byte(0xA7):
             return False
         return True
@@ -470,18 +470,18 @@ class Touch_CST816T(object):
         return self._read_byte(0xA9)
       
     #Stop sleeping  停止睡眠
-    def Stop_Sleep(self):
+    def Stop_Sleep(self) -> None:
         self._write_byte(0xFE,0x01)
     
     #Reset  复位    
-    def Reset(self):
+    def Reset(self) -> None:
         self.rst(0)
         time.sleep_ms(1)
         self.rst(1)
         time.sleep_ms(50)
     
     #Set mode  设置模式   
-    def Set_Mode(self,mode,callback_time=10,rest_time=5): 
+    def Set_Mode(self,mode,callback_time=10,rest_time=5) -> None: 
         # mode = 0 gestures mode 
         # mode = 1 point mode 
         # mode = 2 mixed mode 
@@ -496,7 +496,7 @@ class Touch_CST816T(object):
             self._write_byte(0xEC,0X01)
      
     #Get the coordinates of the touch  获取触摸的坐标
-    def get_point(self):
+    def get_point(self) -> None:
         xy_point = self._read_block(0x03,4)
         
         x_point= ((xy_point[0]&0x0f)<<8)+xy_point[1]
@@ -505,7 +505,7 @@ class Touch_CST816T(object):
         self.X_point=x_point
         self.Y_point=y_point
         
-    def Int_Callback(self,pin):
+    def Int_Callback(self,pin) -> None:
         self.last_time_pressed = time.time()
         if self.Mode == 0 :
             self.Gestures = self._read_byte(0x01)
@@ -514,7 +514,7 @@ class Touch_CST816T(object):
             self.Flag = 1
             self.get_point()
 
-    def Timer_callback(self,t):
+    def Timer_callback(self,t) -> None:
         self.l += 1
         if self.l > 100:
             self.l = 50
@@ -544,17 +544,17 @@ class QMI8658(object):
         LSB = self._bus.readfrom_mem(int(self._address),int(cmd),1)
         MSB = self._bus.readfrom_mem(int(self._address),int(cmd)+1,1)
         return (MSB[0] << 8) + LSB[0]
-    def _write_byte(self,cmd,val):
+    def _write_byte(self,cmd,val) -> None:
         self._bus.writeto_mem(int(self._address),int(cmd),bytes([int(val)]))
         
-    def WhoAmI(self):
+    def WhoAmI(self) -> bool:
         bRet=False
         if (0x05) == self._read_byte(0x00):
             bRet = True
         return bRet
     def Read_Revision(self):
         return self._read_byte(0x01)
-    def Config_apply(self):
+    def Config_apply(self) -> None:
         # REG CTRL1
         self._write_byte(0x02,0x60)
         # REG CTRL2 : QMI8658AccRange_8g  and QMI8658AccOdr_1000Hz

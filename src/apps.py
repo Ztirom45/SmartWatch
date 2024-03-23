@@ -48,16 +48,16 @@ class App():
 
 
 class DOF_READ(App):
-    def __init__(self):
+    def __init__(self) -> None:
         self.qmi8658=QMI8658()
         self.Vbat= ADC(Pin(Vbat_Pin))
-    def setup(self):
+    def setup(self) -> None:
         Touch.Mode = 0
         Touch.Set_Mode(Touch.Mode)
         LCD.fill_rect(0,0,240,80,LCD.red)
         LCD.text("ztwatch",80,25,LCD.white)
 
-    def loop(self):
+    def loop(self) -> None:
         #read QMI8658
         xyz=self.qmi8658.Read_XYZ()
         
@@ -78,13 +78,13 @@ class DOF_READ(App):
         LCD.show()
  
 class Clock(App):
-    def __init__(self):
+    def __init__(self) -> None:
         self.month_format = ["Jan","Feb","Mar","Apr","Jun","Jul","Aug","Sep","Oct","Nov","Dec"]
         self.get_month_format = lambda date: self.month_format[date-1]
         self.conversion_factor = 3 * 3.3 / 65535
         self.full_battery = 4.2
         self.empty_battery = 2.8
-    def draw_disp(self):
+    def draw_disp(self) -> None:
         LCD.fill(LCD.black)
         for angle in range(60):
             line_vec = zlm.angle_2_vec(angle*6,120)
@@ -96,7 +96,7 @@ class Clock(App):
                 LCD.white)
         
             
-    def draw_time(self):
+    def draw_time(self) -> None:
         t = time.localtime()
         LCD.write_text_vertical(f"{t[2]}.{self.get_month_format(t[1])}",[120,120],2,LCD.white,None,center=True)
         
@@ -117,10 +117,10 @@ class Clock(App):
         line_vec = zlm.angle_2_vec(angle_h,60)
         LCD.line(120,120,120+int(line_vec[0]),120+int(line_vec[1]),LCD.white)
     
-    def setup(self):
+    def setup(self) -> None:
         Touch.Mode = 0
         Touch.Set_Mode(Touch.Mode)
-    def loop(self):
+    def loop(self) -> None:
         self.draw_disp()
         self.draw_time()
         LCD.show()
