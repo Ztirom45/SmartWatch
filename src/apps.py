@@ -1,3 +1,4 @@
+import zlm
 from controler_lib import *
 
 TIME_LOCK = const(3)
@@ -11,12 +12,12 @@ def ask_sleep_break() -> None:
         LCD.write_cmd(0x10)#enter sleep_mode
         #machine.deepsleep(1000)
         
-        machine.freq(20000000) # reduce to 20MHz
+        freq(20000000) # reduce to 20MHz
         Touch.Gestures = 0
         while Touch.Gestures != GUESTER_CLICK:
             #machine.deepsleep(1000)
             time.sleep(0.1)
-        machine.freq(125000000) # restore to 125MHz
+        freq(125000000) # restore to 125MHz
         
         LCD.write_cmd(0x11)#wake up from sleep_mode
         LCD.set_bl_pwm(30000)#enable backlight
@@ -99,7 +100,7 @@ class Clock(App):
         t = time.localtime()
         LCD.write_text_vertical(f"{t[2]}.{self.get_month_format(t[1])}",[120,120],2,LCD.white,None,center=True)
         
-        voltage = machine.ADC(29).read_u16()*self.conversion_factor
+        voltage = ADC(29).read_u16()*self.conversion_factor
         precentage = 100 * ((voltage - self.empty_battery) / (self.full_battery - self.empty_battery))
         LCD.write_text_vertical(f"{int(precentage)}%",[120,160],2,LCD.white,None,center=True)
         

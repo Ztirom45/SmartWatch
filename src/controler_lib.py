@@ -1,4 +1,4 @@
-from machine import Pin,I2C,SPI,PWM,Timer,ADC
+from machine import Pin,I2C,SPI,PWM,Timer,ADC,freq
 import framebuf
 import time
 Vbat_Pin = 29
@@ -605,3 +605,10 @@ GUESTER_RIGHT = const(0x01)#const(0x04)
 GUESTER_CLICK = const(0x05)
 GUESTER_LONG_PRESS = const(0x0C)
 GUESTER_DOUBLE_CLICK = const(0x0B)
+
+
+LCD = LCD_1inch28()
+LCD.set_bl_pwm(30000)
+
+Touch=Touch_CST816T(mode=1,LCD=LCD)
+
