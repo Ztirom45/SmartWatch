@@ -5,7 +5,7 @@ TIME_LOCK = const(3)
 
 class App():
     def ask_sleep_break(self) -> None:
-        if(Touch.Gestures == GUESTER_DOUBLE_CLICK or (time.time()-Touch.last_time_pressed)>TIME_LOCK):
+        if((Touch.Gestures == GUESTER_DOUBLE_CLICK or (time.time()-Touch.last_time_pressed)>TIME_LOCK and get_battery_persentage() <= 100.0)):
             LCD.fill(LCD.black)
             LCD.show()
 
@@ -48,7 +48,6 @@ class App():
 
 class DOF_READ(App):
     def __init__(self) -> None:
-        self.qmi8658=QMI8658()
         self.Vbat= ADC(Pin(Vbat_Pin))
     def setup(self) -> None:
         Touch.Mode = 0
@@ -58,7 +57,7 @@ class DOF_READ(App):
 
     def loop(self) -> None:
         #read QMI8658
-        xyz=self.qmi8658.Read_XYZ()
+        xyz=self.gyro.Read_XYZ()
         
         LCD.fill_rect(0,80,120,120,0x1805)
         LCD.text("ACC_X={:+.2f}".format(xyz[0]),20,100-3,LCD.white)
@@ -82,7 +81,7 @@ class Clock(App):
         self.get_month_format = lambda date: self.month_format[date-1]
         self.conversion_factor = 3 * 3.3 / 65535
         self.full_battery = 4.2
-        self.empty_battery = 2.8
+        self.empty_battery = 3.8
     def draw_disp(self) -> None:
         LCD.fill(LCD.black)
         for angle in range(60):
@@ -99,8 +98,8 @@ class Clock(App):
         t = time.localtime()
         LCD.write_text_vertical(f"{t[2]}.{self.get_month_format(t[1])}",[120,120],2,LCD.white,None,center=True)
         
-        voltage = ADC(29).read_u16()*self.conversion_factor
-        precentage = 100 * ((voltage - self.empty_battery) / (self.full_battery - self.empty_battery))
+        voltage = ADC(Vbat_Pin).read_u16()*self.conversion_factor
+        precentage = get_battery_persentage()
         LCD.write_text_vertical(f"{int(precentage)}%",[120,160],2,LCD.white,None,center=True)
         
         angle_s = t[5]*-6-90
@@ -126,44 +125,33 @@ class Clock(App):
 
 DISPLAY_SIZE = const(240)
 DISPLAY_SIZE_HALF = const(120)
+DATA_ARRAY_SIZE = const(60)
+PIXELS_PER_VALUE = const(4)
 class Ploty(App):
     """
         a App to plot data (in this case the accelration of the gyro)
     """
     def __init__(self) -> None:
-        self.qmi8658=QMI8658()
         self.data = [
-                [0 for _ in range(DISPLAY_SIZE)],# in this case red & acc_x
-                [0 for _ in range(DISPLAY_SIZE)],# in this case green & acc_y
-                [0 for _ in range(DISPLAY_SIZE)],# in this case blue & acc_z
-                [0 for _ in range(DISPLAY_SIZE)]# in this case white & all accs added
+                [0 for _ in range(DATA_ARRAY_SIZE)]# in this case white & acceleration
                 ]
     def update_data(self,data_now) -> None:#update the ploted data
         self.data[0].append(data_now[0])
         del(self.data[0][0])
-        self.data[1].append(data_now[1])
-        del(self.data[1][0])
-        self.data[2].append(data_now[2])
-        del(self.data[2][0])
-        self.data[3].append(data_now[3])
-        del(self.data[3][0])
     def draw_data(self):
         LCD.fill(LCD.black)
-        for i in range(DISPLAY_SIZE):
-            LCD.pixel(DISPLAY_SIZE_HALF+self.data[0][i],DISPLAY_SIZE-i,LCD.red)
-            LCD.pixel(DISPLAY_SIZE_HALF+self.data[1][i],DISPLAY_SIZE-i,LCD.green)
-            LCD.pixel(DISPLAY_SIZE_HALF+self.data[2][i],DISPLAY_SIZE-i,LCD.blue)
-            LCD.pixel(DISPLAY_SIZE_HALF+self.data[3][i],DISPLAY_SIZE-i,LCD.white)
+        for i in range(DATA_ARRAY_SIZE):
+            LCD.pixel(DISPLAY_SIZE_HALF+self.data[0][i],DISPLAY_SIZE-(i*PIXELS_PER_VALUE),LCD.white)
 
     def setup(self) -> None:
         LCD.fill(LCD.black)
     def loop(self) -> None:
-        acc_and_gyro = self.qmi8658.Read_XYZ()[:3]
+        acc_and_gyro = gyro.Read_XYZ()[:3]
         acc_x = int(acc_and_gyro[0]*50)
         acc_y = int(acc_and_gyro[1]*50)
         acc_z = int(acc_and_gyro[2]*50)
         acc_all = int((acc_x+acc_y+acc_z)/3)
-        self.update_data((acc_x,acc_y,acc_z,acc_all))
+        self.update_data([acc_all])
         self.draw_data()
         LCD.show()
     def ask_sleep_break(self) -> None:
@@ -184,6 +172,20 @@ class Ploty(App):
             
             LCD.write_cmd(0x11)#wake up from sleep_mode
             LCD.set_bl_pwm(30000)#enable backlight
+
+class StepCounter(App):
+    def __init__(self) -> None: 
+        self.steps:int = 0
+        self.acc_array = []
+    
+    def loop(self) -> None:
+        self.acc_array[0].append(gyro.Read_XYZ()[:3])
+        LCD.show()
+
+        if(zlm.get_step(self.acc_array)):
+            self.steps += 1
+            LCD.fill(LCD.black)
+            LCD.write_text_vertical(str(self.steps),(120,120),5,LCD.white,None,center=True)
 
 
 Apps = [Clock(),DOF_READ(),Ploty()]

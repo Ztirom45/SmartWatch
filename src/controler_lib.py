@@ -1,7 +1,17 @@
 from machine import Pin,I2C,SPI,PWM,Timer,ADC,freq
 import framebuf
 import time
-Vbat_Pin = 29
+
+Vbat_Pin = const(29)
+FULL_BATTERY = const(4.2)
+EMPTY_BATTERY = const(3.3)
+RANGE_BATTERY = const(0.9)#FULL_BATTERY-EMPTY_BATTERY
+CONSVERSION_FACTOR = 3 * 3.3 / 65535
+Vbat = ADC(Vbat_Pin)
+
+def get_battery_persentage()->float:
+    voltage = Vbat.read_u16()*CONSVERSION_FACTOR
+    return 100 * (voltage - EMPTY_BATTERY) / RANGE_BATTERY
 
 #setup font
 CHAR_SPACE = 32
@@ -611,4 +621,5 @@ LCD = LCD_1inch28()
 LCD.set_bl_pwm(30000)
 
 Touch=Touch_CST816T(mode=1,LCD=LCD)
+gyro = QMI8658()
 
