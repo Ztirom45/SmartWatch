@@ -22,6 +22,7 @@ class App():
             
             LCD.write_cmd(0x11)#wake up from sleep_mode
             LCD.set_bl_pwm(30000)#enable backlight
+            self.setup()
 
 
     def setup(self) -> None:
@@ -57,7 +58,7 @@ class DOF_READ(App):
 
     def loop(self) -> None:
         #read QMI8658
-        xyz=self.gyro.Read_XYZ()
+        xyz=gyro.Read_XYZ()
         
         LCD.fill_rect(0,80,120,120,0x1805)
         LCD.text("ACC_X={:+.2f}".format(xyz[0]),20,100-3,LCD.white)
@@ -166,7 +167,6 @@ class Ploty(App):
             freq(20000000) # reduce to 20MHz
             Touch.Gestures = 0
             while Touch.Gestures != GUESTER_CLICK:
-                #machine.deepsleep(1000)
                 time.sleep(0.1)
             freq(125000000) # restore to 125MHz
             
@@ -175,17 +175,34 @@ class Ploty(App):
 
 class StepCounter(App):
     def __init__(self) -> None: 
-        self.steps:int = 0
+        self.steps:int = 1
         self.acc_array = []
     
+    def update_display(self) -> None:
+            LCD.fill(LCD.black)
+            LCD.write_text_vertical(str(self.steps),[120,120],5,LCD.white,None,center=True)
+            LCD.show()
+
+    def setup(self) -> None:
+        self.update_display()
     def loop(self) -> None:
-        self.acc_array[0].append(gyro.Read_XYZ()[:3])
-        LCD.show()
+        self.acc_array.append(gyro.Read_XYZ()[:3])
 
         if(zlm.get_step(self.acc_array)):
             self.steps += 1
-            LCD.fill(LCD.black)
-            LCD.write_text_vertical(str(self.steps),(120,120),5,LCD.white,None,center=True)
+            self.update_display()
 
 
-Apps = [Clock(),DOF_READ(),Ploty()]
+Apps = [Clock(),DOF_READ(),Ploty(),StepCounter()]
+
+def run_apps():
+    current_app = 0
+    while True:
+        Touch.Gestures = 0
+        if(Apps[current_app].run()):
+            current_app+=1
+        else:
+            current_app -=1
+        #cheack index
+        if(current_app<0):current_app = len(Apps)-1
+        if(current_app>=len(Apps)):current_app = 0
