@@ -30,28 +30,26 @@ def is_peak(data:list,position) ->bool:
            or data[position]  == 
             min(data[position-NEIGHBORS_LEFT_RIGHT:position+NEIGHBORS_LEFT_RIGHT]))
 
-ARRAY_SIZE = 100
-STEP_MIN_FREQ = 5.0
-STEP_MAX_FREQ = 15.0
+ARRAY_SIZE = 50
+STEP_MIN_FREQ = 0.3
 
-def get_step(a:list) -> bool:
+def get_step(acc_array:list) -> bool:
     """
         a function which detects a step in the data and removes the step from it
     """
-    peaks:list = []
-    for i in range(len(a)):
-        if is_peak(a,i):
-            peaks.append(i)
+    #get peaks
+    peak_filter = lambda position: is_peak(acc_array,position)
+    peaks_pos = list(map(lambda i:i,filter(peak_filter,range(len(acc_array)))))
 
-    if len(a)>ARRAY_SIZE:
-        if len(peaks) >1:
-            del(a[0:peaks[1]])
-            acc_freq:float = max(peaks[0:2])-min(peaks[0:2])
-            if acc_freq > STEP_MIN_FREQ and acc_freq < STEP_MAX_FREQ:
-                return True
+    if len(acc_array) > ARRAY_SIZE:
+        if len(peaks_pos) > 1:
+            #get frequency
+            step_freq = (max((acc_array[peaks_pos[0]],acc_array[peaks_pos[1]]))-
+                        min((acc_array[peaks_pos[0]],acc_array[peaks_pos[1]])))
+            #delete analysed part of array
+            del(acc_array[0:peaks_pos[1]])
+            return step_freq > STEP_MIN_FREQ
+                 
         else:
-            del(a[0])
-
+            del(acc_array[0])
     return False
-
-    

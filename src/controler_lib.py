@@ -3,11 +3,29 @@ import framebuf
 import time
 
 Vbat_Pin = const(29)
-FULL_BATTERY = const(4.2)
-EMPTY_BATTERY = const(3.3)
-RANGE_BATTERY = const(0.9)#FULL_BATTERY-EMPTY_BATTERY
+FULL_BATTERY = const(4.01)
+EMPTY_BATTERY = const(3.4)
+RANGE_BATTERY = const(0.61)#FULL_BATTERY-EMPTY_BATTERY
 CONSVERSION_FACTOR = 3 * 3.3 / 65535
 Vbat = ADC(Vbat_Pin)
+
+
+starttime = time.ticks_ms()
+def wait_until_time_passed(wait_time:float,last_time:float)->float:
+    """
+        a function that waits until time `ms` passed,
+        so a code can do stuff for example every secound 
+        and not sleep(1s)+time the code needs to be excuted
+        code written by Ztirom45
+        use it like this: `last_time = wait_until_secounds_passed(100,last_time)`
+        LICENSE: GPL4
+    """
+    expected_time = wait_time+last_time
+    if expected_time > time.ticks_ms():
+        #print(expected_time)#for debuging purposes
+        time.sleep_ms(expected_time-time.ticks_ms())
+    return expected_time
+
 
 def get_battery_persentage()->float:
     voltage = Vbat.read_u16()*CONSVERSION_FACTOR
@@ -616,10 +634,18 @@ GUESTER_CLICK = const(0x05)
 GUESTER_LONG_PRESS = const(0x0C)
 GUESTER_DOUBLE_CLICK = const(0x0B)
 
+#ask for guester function
+def is_gester(gester) -> bool:
+    if(Touch.Gestures == gester):
+        Touch.Gestures = 0
+        time.sleep(0.01)
+        return True
+    return False
 
 LCD = LCD_1inch28()
 LCD.set_bl_pwm(30000)
 
 Touch=Touch_CST816T(mode=1,LCD=LCD)
 gyro = QMI8658()
+
 

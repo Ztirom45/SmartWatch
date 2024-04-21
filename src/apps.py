@@ -1,10 +1,21 @@
+from utime import sleep, ticks_ms
+from SaveData3 import writeToDisk
 import zlm
 from controler_lib import *
+from machine import RTC
 
 TIME_LOCK = const(3)
 
+#step tracking vars
+acc_array  = []
+steps = 0
+
+#setup rtc
+rtc = RTC()
+
 class App():
     def ask_sleep_break(self) -> None:
+        global steps, acc_array
         if((Touch.Gestures == GUESTER_DOUBLE_CLICK or (time.time()-Touch.last_time_pressed)>TIME_LOCK and get_battery_persentage() <= 100.0)):
             LCD.fill(LCD.black)
             LCD.show()
@@ -15,9 +26,12 @@ class App():
             
             freq(20000000) # reduce to 20MHz
             Touch.Gestures = 0
+            last_time = time.ticks_ms()
             while Touch.Gestures != GUESTER_CLICK:
-                #machine.deepsleep(1000)
-                time.sleep(0.1)
+                acc_array.append(sum(gyro.Read_XYZ()[:3]))
+                if zlm.get_step(acc_array): steps+=1
+                last_time = wait_until_time_passed(0.1,last_time)
+                
             freq(125000000) # restore to 125MHz
             
             LCD.write_cmd(0x11)#wake up from sleep_mode
@@ -134,27 +148,26 @@ class Ploty(App):
     """
     def __init__(self) -> None:
         self.data = [
-                [0 for _ in range(DATA_ARRAY_SIZE)]# in this case white & acceleration
+                list(map(lambda _:1, range(DATA_ARRAY_SIZE)))# in this case white & acceleration
                 ]
+        self.last_time = time.ticks_ms()#a var for wait_until_time_passed
     def update_data(self,data_now) -> None:#update the ploted data
         self.data[0].append(data_now[0])
+        writeToDisk(data_now)
         del(self.data[0][0])
     def draw_data(self):
         LCD.fill(LCD.black)
         for i in range(DATA_ARRAY_SIZE):
-            LCD.pixel(DISPLAY_SIZE_HALF+self.data[0][i],DISPLAY_SIZE-(i*PIXELS_PER_VALUE),LCD.white)
+            LCD.pixel(DISPLAY_SIZE_HALF+int(self.data[0][i]*20)
+                      ,DISPLAY_SIZE-(i*PIXELS_PER_VALUE),LCD.white)
 
     def setup(self) -> None:
         LCD.fill(LCD.black)
     def loop(self) -> None:
-        acc_and_gyro = gyro.Read_XYZ()[:3]
-        acc_x = int(acc_and_gyro[0]*50)
-        acc_y = int(acc_and_gyro[1]*50)
-        acc_z = int(acc_and_gyro[2]*50)
-        acc_all = int((acc_x+acc_y+acc_z)/3)
-        self.update_data([acc_all])
+        self.update_data([sum(gyro.Read_XYZ()[:3])])
         self.draw_data()
         LCD.show()
+        self.last_time = wait_until_time_passed(100,self.last_time)
     def ask_sleep_break(self) -> None:
         if(Touch.Gestures == GUESTER_DOUBLE_CLICK):
             LCD.fill(LCD.black)
@@ -175,25 +188,104 @@ class Ploty(App):
 
 class StepCounter(App):
     def __init__(self) -> None: 
-        self.steps:int = 1
+        self.steps:int = 0
         self.acc_array = []
+        self.last_time = time.ticks_ms()
     
     def update_display(self) -> None:
             LCD.fill(LCD.black)
-            LCD.write_text_vertical(str(self.steps),[120,120],5,LCD.white,None,center=True)
+            LCD.write_text_vertical(str(steps),[120,120],5,LCD.white,None,center=True)
             LCD.show()
 
     def setup(self) -> None:
         self.update_display()
+        self.steps = 0
     def loop(self) -> None:
-        self.acc_array.append(gyro.Read_XYZ()[:3])
+        self.update_display()
+        self.last_time = wait_until_time_passed(100,self.last_time)
+        #print(self.last_time)
+    def ask_sleep_break(self) -> None:
+        if(Touch.Gestures == GUESTER_DOUBLE_CLICK):
+            LCD.fill(LCD.black)
+            LCD.show()
 
-        if(zlm.get_step(self.acc_array)):
-            self.steps += 1
+            LCD.set_bl_pwm(0)#disable backlight 
+            LCD.write_cmd(0x10)#enter sleep_mode
+            #machine.deepsleep(1000)
+            
+            freq(20000000) # reduce to 20MHz
+            Touch.Gestures = 0
+            while Touch.Gestures != GUESTER_CLICK:
+                time.sleep(0.1)
+            freq(125000000) # restore to 125MHz
+            
+            LCD.write_cmd(0x11)#wake up from sleep_mode
+            LCD.set_bl_pwm(30000)#enable backlight
+
+class SetDateTime(App):
+    def __init__(self)->None:
+        self.time_index = 0
+        self.last_time = time.ticks_ms()
+        self.newtime = list(rtc.datetime())
+        self.time_change_mode = False
+        self.description = [
+            "year:",
+            "month:",
+            "day:",
+            "day of week:",
+            "hour:",
+            "minute:",
+            "secound:",
+            "day of year:",
+
+        ]
+    def setup(self)->None: 
+        self.newtime = list(rtc.datetime())
+        self.time_index = 0
+        self.time_change_mode = False
+
+    def update_display(self)->None:
+        LCD.fill(LCD.black) 
+        LCD.write_text_vertical(str(self.description[self.time_index]),[120,80],2,LCD.white,None,center=True)
+        LCD.write_text_vertical(str(self.newtime[self.time_index]),[120,120],5,LCD.white,None,center=True)
+        LCD.show()
+    def start_screen(self)->None:
+        LCD.fill(LCD.black) 
+        LCD.write_text_vertical("Change",[120,100],3,LCD.white,None,center=True)
+        LCD.write_text_vertical("Time",[120,140],3,LCD.white,None,center=True)
+        LCD.show()
+    def error_screen(self):
+        LCD.fill(LCD.black) 
+        LCD.write_text_vertical("Error",[120,120],3,LCD.red,None,center=True)
+        LCD.show()
+
+    def loop(self)->None:
+        if(self.time_change_mode):
+            self.last_time = wait_until_time_passed(100,self.last_time)
             self.update_display()
+            #canging value with up and down guesters
+            if is_gester(GUESTER_DOWN):
+                self.newtime[self.time_index] += 1
+            if is_gester(GUESTER_UP):
+                self.newtime[self.time_index] -= 1
+            #next time setting
+            if is_gester(GUESTER_CLICK):
+                self.time_index += 1
+                if self.time_index >= len(self.newtime):
+                    try:
+                        rtc.datetime(self.newtime)
+                    except:
+                        self.error_screen()
+                        time.sleep(1)
+                    self.time_index = 0
+                    self.time_change_mode = False
+        else:
+            self.start_screen()
+            if is_gester(GUESTER_CLICK):
+                self.newtime = list(rtc.datetime())
+                self.time_change_mode = True
 
-
-Apps = [Clock(),DOF_READ(),Ploty(),StepCounter()]
+Apps = [Clock(),SetDateTime(),DOF_READ(),Ploty(),StepCounter()]
 
 def run_apps():
     current_app = 0

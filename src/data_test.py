@@ -1,34 +1,29 @@
-from random import random, randint
-from time import sleep
+from random import randint
+from SaveData3 import readFromDisk
 from zlm import *
 
+a = list(map(lambda i: abs(i[0]), filter(lambda i: i!= [], readFromDisk("f"))))
+#a = list(map(lambda a:math.sin(a/5)+randint(-5,5)/10,range(100)))
 
+#get peaks
+peak_filter = lambda position: is_peak(a,position)
+peaks_pos = list(map(lambda i:i,filter(peak_filter,range(len(a)))))
+peaks_val = list(map(lambda i:a[i],peaks_pos))
 
-a = [0]
-steps:int = 0
+steps = 0
+for i in range(0,len(peaks_pos)-2,2):#later in a main loop
+            #get freq and amp of first step
+            step_freq = (max((a[peaks_pos[i]],a[peaks_pos[i+1]]))-
+                        min((a[peaks_pos[i]],a[peaks_pos[i+1]])))
+            step_amp = max(peaks_pos[i:i+2])-min(peaks_pos[i:i+2])
+            if step_freq > 0.3:
+                        print(step_freq,step_amp)
+                        steps += 1
+print(steps)
 
-import pygame
-pygame.init()
-SCREEN_SIZE = 1000
-PIXELS_PER_VALUE = int(SCREEN_SIZE/ARRAY_SIZE)
-screen = pygame.display.set_mode((SCREEN_SIZE,SCREEN_SIZE))
-loop = True
-counter:float = 0.0
-while loop:
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            loop = False
+import matplotlib.pyplot as plt
     
-    a.append(math.sin(counter)*float(randint(1,3))/2.0)
 
-    screen.fill((0,0,0))
-    for i in range(len(a)):
-        pygame.draw.rect(screen,
-                     (255,255,255),
-                     (i*PIXELS_PER_VALUE,SCREEN_SIZE/2-a[i]*SCREEN_SIZE/6,4,4))
-    if(get_step(a)):
-        steps += 1
-        print(steps)
-    pygame.display.update()
-    counter += 0.2
-    sleep(0.02)
+plt.plot(a)
+plt.plot(peaks_pos,peaks_val)
+plt.show()
