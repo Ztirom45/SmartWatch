@@ -1,3 +1,10 @@
+"""
+This code is based on a waveshare [example](https://www.waveshare.com/wiki/RP2040-Touch-LCD-1.28#Demo) for using the Waveshare RP2040 PLUS LCD 1.28 Inch microcontroler
+Some parts are modified to my needs by, me Ztirom45.
+The Modefied Code is LICENCED under GPL4.
+
+"""
+
 from machine import Pin,I2C,SPI,PWM,Timer,ADC,freq
 import framebuf
 import time
