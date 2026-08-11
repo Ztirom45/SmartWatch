@@ -20,4 +20,4 @@ A DIY smartwatch based on the waveshare RP2040-Touch-LCD-1.28, code written in c
 - Acceleration diagram
 - (experimental) step tracking
 - Analogue clock screen
-- Power consumtion optimisation, e.g. automatically turning the diplay off.
+- Power consumption optimisation, e.g. automatically turning the display off.
